@@ -1,43 +1,38 @@
-function Test-URI 
-{
+function Test-URI {
     <#
-    .SYNOPSIS
+        .SYNOPSIS
         Tests if a URI is available to web requests.
-    .DESCRIPTION
+        .DESCRIPTION
         Performs a web request on the specified URI, if the response code is 200, returns true, else if any issues ocurr, returns false.
-    .EXAMPLE
+        .EXAMPLE
         C:\PS> Test-URI 'http://microsoft.com'
         Explanation of what the example does
-    .INPUTS
+        .INPUTS
         Accepts Strings of URIs from the pipeline
-    .OUTPUTS
+        .OUTPUTS
         Outputs boolean values if endpoint is available
     #>
     [CmdletBinding()]
     [OutputType([Boolean])]
-    param(
+    param (
         # URI to test connectivity
         [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
         [String]
         $URI
     )
-       
-    process 
-    {
-        try 
-        {
+
+    process {
+        try {
             $Response = Invoke-WebRequest -Uri $URI -TimeoutSec 10
             $Response.statuscode -eq 200
         }
-        catch 
-        {
+        catch {
             $false
         }
     }
 }
 
-function Save-SAMLFederationMetadata
-{
+function Save-SAMLFederationMetadata {
     <#
         .SYNOPSIS
         Downloads the federation metadata from a specified location
@@ -56,13 +51,10 @@ function Save-SAMLFederationMetadata
         Saves the federation metadata from the specified URI
     #>
     [CmdletBinding(DefaultParameterSetName='AzureAD')]
-    param
-    (
+    param (
         # AAD Tenant Address (format is client.onmicrosoft.com)
         [Parameter(Mandatory = $true, ParameterSetName = 'AzureAD')]
-        [ValidateScript({
-                    $_.contains('.onmicrosoft.com')
-        })]
+        [ValidateScript({ $_.contains('.onmicrosoft.com') })]
         [String]
         $AADTenant,
         
@@ -86,15 +78,12 @@ function Save-SAMLFederationMetadata
     )
     
     # If AzureAD or ADFS, build the URI from specified inputs
-    switch ($PSCmdlet.ParameterSetName) 
-    {
-        'AzureAD' 
-        {  
+    switch ($PSCmdlet.ParameterSetName) {
+        'AzureAD' {  
             $BaseURL = 'https://login.microsoftonline.com/{0}/FederationMetadata/2007-06/FederationMetadata.xml'
             $URI = [URI]($BaseURL -f $AADTenant)
         }
-        'ADFS' 
-        {  
+        'ADFS' {  
             $BaseURL = 'https://{0}/FederationMetadata/2007-06/FederationMetadata.xml'
             $URI = [URI]($BaseURL -f $Hostname)
         }
@@ -103,31 +92,26 @@ function Save-SAMLFederationMetadata
     Write-Verbose -Message "Federation Metadata URL: $URI"
     
     # If path is not specified, then save to temp directory.
-    if (-not $PSBoundParameters.ContainsKey('path'))
-    {
+    if (-not $PSBoundParameters.ContainsKey('path')) {
         $Path = Join-Path -Path $ENV:temp -ChildPath 'federation.xml'
         Write-Verbose -Message "Federation Metadata file saved to: $Path"
     }
     
     # Warn the user if overwriting the file (we will continue)
-    if (Test-Path -Path $Path)
-    {
+    if (Test-Path -Path $Path) {
         Write-Warning -Message 'Overwritting file'
     }
 
     # Download the metadata from the URI to the specified path
-    try 
-    {
+    try {
         Invoke-WebRequest -Uri $URI -OutFile $Path -ErrorAction Stop
     }
-    catch 
-    {
+    catch {
         Throw 'Unable to download the federation metadata'
     }
 }
 
-function Test-SAMLFederationEndpoint
-{
+function Test-SAMLFederationEndpoint {
     <#
         .SYNOPSIS
         Tests the availability of each endpoint specified in a federation metadata file.
@@ -142,24 +126,19 @@ function Test-SAMLFederationEndpoint
     #>
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
-    param
-    (       
+    param (       
         # Path to the federation metadata
         [Parameter(Mandatory = $true)]
-        [ValidateScript({
-                    Test-Path -Path $_
-        })]
+        [ValidateScript({ Test-Path -Path $_ })]
         [String]
         $Path
     )
     
     # Read the metadata file in using Select-XML
-    try 
-    {
+    try {
         $FederationMetaData = Select-Xml -Path $Path -XPath /
     }
-    catch 
-    {
+    catch {
         Throw 'Unable to read federation metadata file'
     }
     
@@ -171,12 +150,10 @@ function Test-SAMLFederationEndpoint
         Address      = $EntityIDAddress 
         Available    = Test-URI $EntityIDAddress
     }
-    Write-Output -InputObject $EntityID
+    $EntityID
     
     # Get the SecurityTokenServiceType entity within the federation data
-    $SecurityTokenServiceType = $FederationMetaData.Node.EntityDescriptor.RoleDescriptor | Where-Object -FilterScript {
-        $_.Type -eq 'fed:SecurityTokenServiceType'
-    }
+    $SecurityTokenServiceType = $FederationMetaData.Node.EntityDescriptor.RoleDescriptor | Where-Object -FilterScript { $_.Type -eq 'fed:SecurityTokenServiceType' }
     
     # Get the SecurityTokenService Endpoint, tests its availability and write the output
     Write-Progress -Activity 'Testing Federation Endpoints' -Status 'Testing SecurityTokenService endpoint'
@@ -186,7 +163,7 @@ function Test-SAMLFederationEndpoint
         Address      = $SecurityTokenServiceEndpointAddress
         Available    = Test-URI $SecurityTokenServiceEndpointAddress 
     }
-    Write-Output -InputObject $SecurityTokenServiceEndpoint
+    $SecurityTokenServiceEndpoint
     
     # Get the PassiveRequestorEndpoint, test its availability and write the output
     Write-Progress -Activity 'Testing Federation Endpoints' -Status 'Testing PassiveRequestor endpoint'
@@ -196,12 +173,10 @@ function Test-SAMLFederationEndpoint
         Address      = $PassiveRequestorEndpointAddress
         Available    = Test-URI $PassiveRequestorEndpointAddress 
     }
-    Write-Output -InputObject $PassiveRequestorEndpoint
+    $PassiveRequestorEndpoint
     
     # Get the ApplicationServiceType entity within the federation data
-    $ApplicationService = $FederationMetaData.Node.EntityDescriptor.RoleDescriptor | Where-Object -FilterScript {
-        $_.Type -eq 'fed:ApplicationServiceType'
-    }
+    $ApplicationService = $FederationMetaData.Node.EntityDescriptor.RoleDescriptor | Where-Object -FilterScript { $_.Type -eq 'fed:ApplicationServiceType' }
 
     # Get the ApplicationServiceEndpoint, test its availability and write the output
     Write-Progress -Activity 'Testing Federation Endpoints' -Status 'Testing ApplicationService endpoint'
@@ -211,19 +186,18 @@ function Test-SAMLFederationEndpoint
         Address      = $ApplicationServiceEndpointAddress
         Available    = Test-URI $ApplicationServiceEndpointAddress 
     }
-    Write-Output -InputObject $ApplicationServiceEndpoint
+    $ApplicationServiceEndpoint
     
     # Get the target scopes under the applicationservice, for each, test and write the output
     Write-Progress -Activity 'Testing Federation Endpoints' -Status 'Testing TargetScopes'
     $TargetScopes = $ApplicationService.TargetScopes.EndpointReference
-    foreach ($TargetScope in $TargetScopes) 
-    {
+    foreach ($TargetScope in $TargetScopes) {
         $TargetScopeEndpoint = [PSCustomObject]@{
             EndpointName = 'TargetScope'
             Address      = $TargetScope.address
             Available    = Test-URI $TargetScope.address 
         }
-        Write-Output -InputObject $TargetScopeEndpoint
+        $TargetScopeEndpoint
     }
     
     Write-Progress -Activity 'Testing Federation Endpoints' -Completed
