@@ -111,12 +111,6 @@ function Save-SAMLFederationMetadata
     }
 }
 
-<#
-    TODO:
-    - Write-progress
-    - Comments
-    - pipeline input?
-#>
 function Test-SAMLFederationEndpoint
 {
     <#
@@ -155,6 +149,7 @@ function Test-SAMLFederationEndpoint
     }
     
     # Get the EntityID, and test its availability, and then write the output
+    Write-Progress -Activity 'Testing Federation Endpoints' -Status 'Testing EntityID'
     $EntityIDAddress = $FederationMetaData.Node.EntityDescriptor.entityID
     $EntityID = [PSCustomObject]@{
         EndpointName = 'EntityID'
@@ -169,6 +164,7 @@ function Test-SAMLFederationEndpoint
     }
     
     # Get the SecurityTokenService Endpoint, tests its availability and write the output
+    Write-Progress -Activity 'Testing Federation Endpoints' -Status 'Testing SecurityTokenService endpoint'
     $SecurityTokenServiceEndpointAddress = $SecurityTokenServiceType.SecurityTokenServiceEndpoint.EndpointReference.Address
     $SecurityTokenServiceEndpoint = [PSCustomObject]@{
         EndpointName = 'SecurityTokenService'
@@ -178,6 +174,7 @@ function Test-SAMLFederationEndpoint
     Write-Output -InputObject $SecurityTokenServiceEndpoint
     
     # Get the PassiveRequestorEndpoint, test its availability and write the output
+    Write-Progress -Activity 'Testing Federation Endpoints' -Status 'Testing PassiveRequestor endpoint'
     $PassiveRequestorEndpointAddress = $SecurityTokenServiceType.PassiveRequestorEndpoint.EndpointReference.Address
     $PassiveRequestorEndpoint = [PSCustomObject]@{
         EndpointName = 'PassiveRequestor'
@@ -192,6 +189,7 @@ function Test-SAMLFederationEndpoint
     }
 
     # Get the ApplicationServiceEndpoint, test its availability and write the output
+    Write-Progress -Activity 'Testing Federation Endpoints' -Status 'Testing ApplicationService endpoint'
     $ApplicationServiceEndpointAddress = $ApplicationService.ApplicationServiceEndpoint.EndpointReference.Address
     $ApplicationServiceEndpoint = [PSCustomObject]@{
         EndpointName = 'ApplicationService'
@@ -201,6 +199,7 @@ function Test-SAMLFederationEndpoint
     Write-Output -InputObject $ApplicationServiceEndpoint
     
     # Get the target scopes under the applicationservice, for each, test and write the output
+    Write-Progress -Activity 'Testing Federation Endpoints' -Status 'Testing TargetScopes'
     $TargetScopes = $ApplicationService.TargetScopes.EndpointReference
     foreach ($TargetScope in $TargetScopes) 
     {
@@ -211,4 +210,6 @@ function Test-SAMLFederationEndpoint
         }
         Write-Output -InputObject $TargetScopeEndpoint
     }
+    
+    Write-Progress -Activity 'Testing Federation Endpoints' -Completed
 }
