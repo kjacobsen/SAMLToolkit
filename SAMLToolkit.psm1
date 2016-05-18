@@ -1,23 +1,38 @@
-<#
-    Things that would be nice to see:
-    - Command Splatting
-    - null comparision - always fun
-#>
-
-<#
-    TODO
-    This one will remain internal, but we should clean it up
-#>
-function Test-URI ($URI) 
+function Test-URI 
 {
-    try 
+    <#
+    .SYNOPSIS
+        Tests if a URI is available to web requests.
+    .DESCRIPTION
+        Performs a web request on the specified URI, if the response code is 200, returns true, else if any issues ocurr, returns false.
+    .EXAMPLE
+        C:\PS> Test-URI 'http://microsoft.com'
+        Explanation of what the example does
+    .INPUTS
+        Accepts Strings of URIs from the pipeline
+    .OUTPUTS
+        Outputs boolean values if endpoint is available
+    #>
+    [CmdletBinding()]
+    [OutputType([Boolean])]
+    param(
+        # URI to test connectivity
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [String]
+        $URI
+    )
+       
+    process 
     {
-        $Response = Invoke-WebRequest -Uri $URI -TimeoutSec 10
-        $Response.statuscode -eq 200
-    }
-    catch 
-    {
-        $false
+        try 
+        {
+            $Response = Invoke-WebRequest -Uri $URI -TimeoutSec 10
+            $Response.statuscode -eq 200
+        }
+        catch 
+        {
+            $false
+        }
     }
 }
 
