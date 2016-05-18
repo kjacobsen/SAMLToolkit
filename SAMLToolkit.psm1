@@ -21,24 +21,26 @@ function Test-URI ($URI)
     }
 }
 
-<#
-    TODO:
-    - Comments
-#>
 function Save-SAMLFederationMetadata
 {
     <#
         .SYNOPSIS
-        Short description
+        Downloads the federation metadata from a specified location
         .DESCRIPTION
-        Long description
+        This CMDLet downloads the federation metadata for a specified AAD Tenant, ADFS hostname or specified URI. You can specify either
+        an AAD tenant name (in the format of contoso.onmicrosoft.com), the hostname of an ADFS server (in the format of adfs.contoso.com),
+        or specify a specific URI.
         .EXAMPLE
-        C:\PS> <example usage>
-        Explanation of what the example does
-        .OUTPUTS
-        Output (if any)
+        C:\PS> Save-SAMLFederationMetadata -AADTenant contoso.onmicrosoft.com
+        Saves the AAD federation metadata for the tenant, contoso.onmicrosoft.com. 
+        .EXAMPLE
+        C:\PS> Save-SAMLFederationMetadata -Hostname login.consoto.com
+        Saves the ADFS based federation metadata from the adfs server with hostname login.contoso.com
+        .EXAMPLE
+        C:\PS> Save-SAMLFederationMetadata -URI https://login.contoso.com/FederationMetadata/2007-06/FederationMetadata.xml
+        Saves the federation metadata from the specified URI
     #>
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName='AzureAD')]
     param
     (
         # AAD Tenant Address (format is client.onmicrosoft.com)
@@ -68,6 +70,7 @@ function Save-SAMLFederationMetadata
         $Path
     )
     
+    # If AzureAD or ADFS, build the URI from specified inputs
     switch ($PSCmdlet.ParameterSetName) 
     {
         'AzureAD' 
@@ -84,16 +87,20 @@ function Save-SAMLFederationMetadata
     
     Write-Verbose -Message "Federation Metadata URL: $URI"
     
+    # If path is not specified, then save to temp directory.
     if (-not $PSBoundParameters.ContainsKey('path'))
     {
         $Path = Join-Path -Path $ENV:temp -ChildPath 'federation.xml'
         Write-Verbose -Message "Federation Metadata file saved to: $Path"
-        if (Test-Path -Path $Path)
-        {
-            Write-Warning -Message 'Overwritting file'
-        }
+    }
+    
+    # Warn the user if overwriting the file (we will continue)
+    if (Test-Path -Path $Path)
+    {
+        Write-Warning -Message 'Overwritting file'
     }
 
+    # Download the metadata from the URI to the specified path
     try 
     {
         Invoke-WebRequest -Uri $URI -OutFile $Path -ErrorAction Stop
