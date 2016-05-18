@@ -121,20 +121,22 @@ function Test-SAMLFederationEndpoint
 {
     <#
         .SYNOPSIS
-        Short description
+        Tests the availability of each endpoint specified in a federation metadata file.
         .DESCRIPTION
-        Long description
+        There are a number of endpoints specifed within a federation metadata file. This CMDLet will read a metadata file and test if
+        each of the specifed endpoints are available.
         .EXAMPLE
-        C:\PS> <example usage>
-        Explanation of what the example does
+        C:\PS> Test-SAMLFederationEndpoint -Path C:\federation.xml
+        Tests the endpoints listed within the file, c:\federation.xml
         .OUTPUTS
-        Output (if any)
+        Array of [PSCustomObject] objects containing the name of the endpoint, address and if it is accessible.
     #>
     [CmdletBinding()]
+    [OutputType([PSCustomObject])]
     param
     (       
         # Path to the federation metadata
-        [Parameter(Mandatory = $true, ParameterSetName = 'PATH')]
+        [Parameter(Mandatory = $true)]
         [ValidateScript({
                     Test-Path -Path $_
         })]
@@ -142,7 +144,7 @@ function Test-SAMLFederationEndpoint
         $Path
     )
     
-    # Read the metadata in
+    # Read the metadata file in using Select-XML
     try 
     {
         $FederationMetaData = Select-Xml -Path $Path -XPath /
@@ -152,52 +154,60 @@ function Test-SAMLFederationEndpoint
         Throw 'Unable to read federation metadata file'
     }
     
+    # Get the EntityID, and test its availability, and then write the output
+    $EntityIDAddress = $FederationMetaData.Node.EntityDescriptor.entityID
     $EntityID = [PSCustomObject]@{
         EndpointName = 'EntityID'
-        Address      = $FederationMetaData.Node.EntityDescriptor.entityID
-        Available    = (Test-URI $FederationMetaData.Node.EntityDescriptor.entityID)
+        Address      = $EntityIDAddress 
+        Available    = Test-URI $EntityIDAddress
     }
     Write-Output -InputObject $EntityID
     
+    # Get the SecurityTokenServiceType entity within the federation data
     $SecurityTokenServiceType = $FederationMetaData.Node.EntityDescriptor.RoleDescriptor | Where-Object -FilterScript {
         $_.Type -eq 'fed:SecurityTokenServiceType'
     }
     
+    # Get the SecurityTokenService Endpoint, tests its availability and write the output
     $SecurityTokenServiceEndpointAddress = $SecurityTokenServiceType.SecurityTokenServiceEndpoint.EndpointReference.Address
     $SecurityTokenServiceEndpoint = [PSCustomObject]@{
         EndpointName = 'SecurityTokenService'
         Address      = $SecurityTokenServiceEndpointAddress
-        Available    = (Test-URI $SecurityTokenServiceEndpointAddress) 
+        Available    = Test-URI $SecurityTokenServiceEndpointAddress 
     }
     Write-Output -InputObject $SecurityTokenServiceEndpoint
     
+    # Get the PassiveRequestorEndpoint, test its availability and write the output
     $PassiveRequestorEndpointAddress = $SecurityTokenServiceType.PassiveRequestorEndpoint.EndpointReference.Address
     $PassiveRequestorEndpoint = [PSCustomObject]@{
         EndpointName = 'PassiveRequestor'
         Address      = $PassiveRequestorEndpointAddress
-        Available    = (Test-URI $PassiveRequestorEndpointAddress) 
+        Available    = Test-URI $PassiveRequestorEndpointAddress 
     }
     Write-Output -InputObject $PassiveRequestorEndpoint
     
+    # Get the ApplicationServiceType entity within the federation data
     $ApplicationService = $FederationMetaData.Node.EntityDescriptor.RoleDescriptor | Where-Object -FilterScript {
         $_.Type -eq 'fed:ApplicationServiceType'
     }
 
+    # Get the ApplicationServiceEndpoint, test its availability and write the output
     $ApplicationServiceEndpointAddress = $ApplicationService.ApplicationServiceEndpoint.EndpointReference.Address
     $ApplicationServiceEndpoint = [PSCustomObject]@{
         EndpointName = 'ApplicationService'
         Address      = $ApplicationServiceEndpointAddress
-        Available    = (Test-URI $ApplicationServiceEndpointAddress) 
+        Available    = Test-URI $ApplicationServiceEndpointAddress 
     }
     Write-Output -InputObject $ApplicationServiceEndpoint
     
+    # Get the target scopes under the applicationservice, for each, test and write the output
     $TargetScopes = $ApplicationService.TargetScopes.EndpointReference
     foreach ($TargetScope in $TargetScopes) 
     {
         $TargetScopeEndpoint = [PSCustomObject]@{
             EndpointName = 'TargetScope'
             Address      = $TargetScope.address
-            Available    = (Test-URI $TargetScope.address) 
+            Available    = Test-URI $TargetScope.address 
         }
         Write-Output -InputObject $TargetScopeEndpoint
     }
