@@ -136,7 +136,7 @@ function Test-SAMLFederationEndpoint {
     
     # Read the metadata file in using Select-XML
     try {
-        $FederationMetaData = Select-Xml -Path $Path -XPath /
+        $FederationMetaData = Select-Xml -Path $Path -XPath / -ErrorAction stop
     }
     catch {
         Throw 'Unable to read federation metadata file'
